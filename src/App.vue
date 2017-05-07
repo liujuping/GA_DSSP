@@ -1,14 +1,33 @@
 <template>
-  <div id="app">
-    <div v-for="item in operationArrange">
-      {{ item }}
-      <span v-for="d in item">
-        <i :class="'color color' + d"></i>
-      </span>
+  <div id="app" ref="app">
+    <div class="setting">
+      <label for="">循环次数：</label>
+      <input type="text" v-model="maxCycleNum" class="form-control">
+      <label for="">每代染色体个数：</label>
+      <input type="text" class="form-control" v-model="chromosomeNum">
+      <label for="">变异概率</label>
+      <input type="text" class="form-control" v-model="variationRate">
+      <button class="btn" @click="runResult">运行</button>
     </div>
 
-    <div></div>
+    <div class="result">
+      <div v-for="(value, key) in operationArrange">
+        {{ key }}:
+      <span class="color-wrap" v-for="d in value">
+        <i :class="'color color' + d" :style="'width:' + width + 'px;'"></i>
+      </span>
+      </div>
 
+      <div class="show-obj">
+        <span v-for="i in jobNum">job{{i}}：<i :class="'color color' + i"></i></span>
+      </div>
+
+      <div class="border-wrap">
+      <span class="border" :style="'width:' + width + 'px;'" v-for="i in bestTime">
+        <i class="time" v-if="i % Math.ceil(30 / width) === 0">{{ i }}</i>
+      </span>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -27,17 +46,20 @@
               // 工厂的个数
               factoryNum: null,
               // 当代染色的个数
-              chromosomeNum: 20,
+              chromosomeNum: 2,
               // 当代最好的染色体
               bestChromosome: [],
               // 交叉概率
               crossRate: null,
+              width: null,
               // 最大循环次数
-              maxCycleNum: 20,
+              maxCycleNum: 2,
               // 变异概率
               variationRate: 0.3,
+              // 最优时间
+              bestTime: null,
               // [1][2]  job 1 opera 2
-              operationDetailOneShop: [
+              operationDetail1: [
                   [
                       [{op: 3, time: 1}, {time:3, op: 1}, {time: 6, op: 2}, {time: 7, op: 4}, {time: 3, op: 6}, {time: 6, op: 5}],
                       [{time: 8, op: 2},{time: 5, op: 3},{time: 10, op: 5}, {time: 10, op: 6}, {time: 10, op: 1}, {time: 4, op: 4}],
@@ -73,7 +95,7 @@
                 ]
               ],
               // 机器安排
-              operationArrange: []
+              operationArrange: {}
           }
       },
       methods: {
@@ -89,6 +111,35 @@
 
               this.jobNum = this.operationDetail[0].length
           },
+          // 设置参数重新运行
+          runResult() {
+              // 初始化第一代染色体
+              this.initChromosome()
+              // 获取最好的染色体
+              this.getBestChromosome()
+
+              // 产生下一代染色体
+              let bestTime, bestTimeNum = 0
+              for (let i = 0; i < this.maxCycleNum; i++) {
+                  this.ProduceNextGeneration()
+                  let time = this.computedTime(this.bestChromosome)
+                  if (bestTime === time) {
+                      bestTimeNum++
+                  } else {
+                      bestTime = time
+                      bestTimeNum = 0
+                  }
+                  console.debug(time)
+              }
+              console.debug(bestTime)
+              this.bestTime = bestTime
+              this.getWidth()
+              this.drawChart(this.bestChromosome)
+          },
+          getWidth() {
+            console.debug('clientWidth', this.$el.clientWidth)
+            this.width = parseInt((this.$el.clientWidth - 200)/this.bestTime)
+          },
           // 初始化染色体  F-J,
           initChromosome() {
 
@@ -98,7 +149,7 @@
                   let factoryChrome = []       // 排列：[1, 3, 2, 2, 3, 3]
                   for (let i = 0; i < this.operationNum; i++) {
                       for(let j = 0; j < this.jobNum; j++ ) {
-                          chromosome[j + i * this.operationNum] = j + 1
+                          chromosome[j + i * this.jobNum] = j + 1
                       }
                   }
                   for( let i = 0; i < this.jobNum; i++ ) {
@@ -174,11 +225,17 @@
           },
           // 获得机器安排
           getDistribution(chromosome) {
-              let operationArrange = []
+              let operationArrange = {}
               // 该Job的第几个操作
               let jobNum = new Array(this.jobNum).fill(-1)
               // 下一个job要开始的最早时间
               let jobStartTime = new Array(this.jobNum).fill(0)
+              // 初始化operationArrange
+              for(let i = 0; i < this.factoryNum; i++) {
+                  for(let j = 0; j < this.operationNum; j++) {
+                      operationArrange['F' + (i + 1) + '-MA' + (j + 1)] = ''
+                  }
+              }
               chromosome.jobChrome.forEach((i) => {   // i为工作编号
                   // 第几个操作
                   jobNum[i-1]++
@@ -186,19 +243,19 @@
                   let factory = chromosome.factoryChrome[i - 1]
                   let op = this.operationDetail[factory - 1][i - 1][jobNum[i-1]].op - 1
                   let time = this.operationDetail[factory - 1][i - 1][jobNum[i-1]].time
-                  if(operationArrange['fac' + factory + 'op' + op]) {
-                      if(operationArrange['fac' + factory + 'op' + op].length < jobStartTime[i-1]) {
-                          operationArrange['fac' + factory + 'op' + op] += '0'.repeat(jobStartTime[i-1] - operationArrange['fac' + factory + 'op' + op].length)
+                  if(operationArrange['F' + factory + '-MA' + (op + 1)]) {
+                      if(operationArrange['F' + factory + '-MA' + (op + 1)].length < jobStartTime[i-1]) {
+                          operationArrange['F' + factory + '-MA' + (op + 1)] += '0'.repeat(jobStartTime[i-1] - operationArrange['F' + factory + '-MA' + (op + 1)].length)
                       }
                   }
                   else {
                       if(0 < jobStartTime[i-1]) {
-                          operationArrange['fac' + factory + 'op' + op] = '0'.repeat(jobStartTime[i-1])
+                          operationArrange['F' + factory + '-MA' + (op + 1)] = '0'.repeat(jobStartTime[i-1])
                       }
                   }
 
-                  operationArrange['fac' + factory + 'op' + op] ? operationArrange['fac' + factory + 'op' + op] += (i + '').repeat(time) : operationArrange['fac' + factory + 'op' + op] = (i + '').repeat(time)
-                  jobStartTime[i-1] = operationArrange['fac' + factory + 'op' + op].length
+                  operationArrange['F' + factory + '-MA' + (op + 1)] ? operationArrange['F' + factory + '-MA' + (op + 1)] += (i + '').repeat(time) : operationArrange['F' + factory + '-MA' + (op + 1)] = (i + '').repeat(time)
+                  jobStartTime[i-1] = operationArrange['F' + factory + '-MA' + (op + 1)].length
               })
               return operationArrange
           },
@@ -304,7 +361,7 @@
           // 随机两个位置
           randomTwoStation() {
               // 随机确定两个位置
-              let station1, station2, len = (this.operationNum - 1) * this.jobNum
+              let station1, station2, len = this.operationNum * this.jobNum
               do {
                   station1 = parseInt(len * Math.random())
                   station2 = parseInt(len * Math.random())
@@ -317,32 +374,9 @@
               return { station1, station2 }
           }
       },
-      created() {
-          this.init()
-          // 初始化第一代染色体
-          this.initChromosome()
-          // 获取最好的染色体
-          this.getBestChromosome()
-
-          // 产生下一代染色体
-          let bestTime, bestTimeNum = 0
-          for (let i = 0; i < this.maxCycleNum; i++) {
-              this.ProduceNextGeneration()
-              let time = this.computedTime(this.bestChromosome)
-              if (bestTime === time) {
-                  bestTimeNum++
-              } else {
-                  bestTime = time
-                  bestTimeNum = 0
-              }
-              console.debug(time)
-          }
-          console.debug(bestTime)
-          this.operationArrange = this.getDistribution(this.bestChromosome)
-      },
       mounted() {
-//        var bestChromosome = [2, 1, 3, 2, 1, 4, 1, 4, 5, 3, 4, 3, 2, 3, 1, 5, 2, 4, 6, 3, 6, 6, 2, 5, 6, 3, 1, 4, 2, 1, 5, 5, 4, 6, 5, 6]
-//        this.drawChart(bestChromosome)
+          this.init()
+          this.runResult()
       }
   }
 </script>
@@ -350,15 +384,35 @@
 <style lang="scss">
   #app {
     font-family: Consolas, Monaco, monospace;
+    position: relative;
+    box-sizing: border-box;
+  }
+  .show-obj {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    span {
+      display: block;
+    }
+    .color {
+      width: 20px;
+      height: 10px;
+      border: 1px solid #ccc;
+    }
   }
   .color {
     display: inline-block;
     width: 10px;
-    height: 20px;
+    height: 16px;
     background-color: #fff;
+    border: 1px solid #ccc;
+    border-right: none;
+  }
+  .color-wrap:last-child .color {
+    border-right: 1px solid #ccc;
   }
   .color0 {
-    background-color: #000;
+    background-color: #fff;
   }
   .color1 {
     background-color: red;
@@ -379,7 +433,74 @@
     background-color: palegreen;
   }
   .color6 {
-    background-color: orangered;
+    background-color: blue;
+  }
+  .border-wrap {
+    margin-left: 70px;
+    margin-top: 5px;
+  }
+  .border {
+    display: inline-block;
+    text-align: center;
+    border-top: 1px solid #ccc;
+    border-right: 1px solid #ccc;
+    height: 3px;
+    position: relative;
+    .time {
+      position: absolute;
+      top: 10px;
+      right: 0;
+    }
+
+  }
+  .setting {
+    padding: 20px;
+    .form-control {
+      display: inline-block;
+      height: 18px;
+      font-size: 14px;
+      margin-right: 10px;
+      line-height: 1.42857143;
+      color: #2a2a2a;
+      background-color: #fff;
+      background-image: none;
+      border: 1px solid #d2d2d2;
+      border-radius: 4px;
+      padding: 6px 10px;
+      width: 140px;
+      transition: border-color ease-in-out .15s,box-shadow ease-in-out .15s;
+      box-shadow: none;
+    }
+  }
+  .result {
+    position: relative;
+  }
+  .btn {
+    display: inline-block;
+    margin-bottom: 0;
+    font-weight: 400;
+    text-align: center;
+    vertical-align: middle;
+    -ms-touch-action: manipulation;
+    touch-action: manipulation;
+    cursor: pointer;
+    background-image: none;
+    border: 1px solid transparent;
+    white-space: nowrap;
+    padding: 6px 12px;
+    font-size: 14px;
+    line-height: 1.42857143;
+    border-radius: 4px;
+    color: #fff;
+    background-color: #06c1ae;
+    border-color: #06c1ae;
+    user-select: none;
+    &:active, &:focus {
+      border-color: #049081!important;
+      background-color: #049081!important;
+      -webkit-box-shadow: none;
+      outline: 0;
+    }
   }
 
 </style>
