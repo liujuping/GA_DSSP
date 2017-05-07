@@ -2,7 +2,13 @@
   <div id="app">
     <div v-for="item in operationArrange">
       {{ item }}
+      <span v-for="d in item">
+        <i :class="'color color' + d"></i>
+      </span>
     </div>
+
+    <div></div>
+
   </div>
 </template>
 
@@ -12,54 +18,99 @@
       data () {
           return {
               msg: 'Welcome to Your Vue.js App',
-              // 工厂数量
-              factoryNum: 1,
-              // 机器数量
-              machineNum: 6,
               // 工作数
-              jobNum: 6,
-              // 染色体代，每个染色体的长度为：jobNum * operationNum
+              jobNum: null,
+              // 染色体代，每个染色体的长度为：jobNum * (operationNum - 1)
               chromosomes: [],
               // 操作的个数
-              operationNum: 6,
+              operationNum: null,
+              // 工厂的个数
+              factoryNum: null,
               // 当代染色的个数
-              chromosomeNum: 100,
+              chromosomeNum: 20,
               // 当代最好的染色体
               bestChromosome: [],
               // 交叉概率
               crossRate: null,
               // 最大循环次数
-              maxCycleNum: 80,
+              maxCycleNum: 20,
               // 变异概率
               variationRate: 0.3,
               // [1][2]  job 1 opera 2
+              operationDetailOneShop: [
+                  [
+                      [{op: 3, time: 1}, {time:3, op: 1}, {time: 6, op: 2}, {time: 7, op: 4}, {time: 3, op: 6}, {time: 6, op: 5}],
+                      [{time: 8, op: 2},{time: 5, op: 3},{time: 10, op: 5}, {time: 10, op: 6}, {time: 10, op: 1}, {time: 4, op: 4}],
+                      [{time: 5,op: 3}, {time: 4, op: 4}, {time: 8, op: 6}, {time: 9, op: 1}, {time: 1, op: 2}, {time: 7, op: 5}],
+                      [{time: 5,op: 2}, {time: 5, op: 1}, {time: 5, op: 3}, {time: 3, op: 4}, {time: 8, op: 5}, {time: 9, op: 6}],
+                      [{time: 9,op: 3}, {time: 3, op: 2}, {time: 5, op: 5}, {time: 4, op: 6}, {time: 3, op: 1}, {time: 1, op: 4}],
+                      [{time: 3,op: 2}, {time: 3, op: 4}, {time: 9, op: 6}, {time: 10, op: 1}, {time: 4, op: 5}, {time: 1, op: 3}],
+                  ]
+              ],
+              // 多工厂调度计划
               operationDetail: [
-                  [{op: 3, time: 1}, {time:3, op: 1}, {time: 6, op: 2}, {time: 7, op: 4}, {time: 3, op: 6}, {time: 6, op: 5}],
-                  [{time: 8, op: 2},{time: 5, op: 3},{time: 10, op: 5}, {time: 10, op: 6}, {time: 10, op: 1}, {time: 4, op: 4}],
-                  [{time: 5,op: 3}, {time: 4, op: 4}, {time: 8, op: 6}, {time: 9, op: 1}, {time: 1, op: 2}, {time: 7, op: 5}],
-                  [{time: 5,op: 2}, {time: 5, op: 1}, {time: 5, op: 3}, {time: 3, op: 4}, {time: 8, op: 5}, {time: 9, op: 6}],
-                  [{time: 9,op: 3}, {time: 3, op: 2}, {time: 5, op: 5}, {time: 4, op: 6}, {time: 3, op: 1}, {time: 1, op: 4}],
-                  [{time: 3,op: 2}, {time: 3, op: 4}, {time: 9, op: 6}, {time: 10, op: 1}, {time: 4, op: 5}, {time: 1, op: 3}],
+                 [
+                    [{op: 1, time: 2}, {op: 3, time: 1}, {op: 2, time: 3}, {op: 4, time: 3}],
+                    [{op: 2, time: 3}, {op: 3, time: 2}, {op: 1, time: 3}, {op: 4, time: 4}],
+                    [{op: 2, time: 10}, {op: 1, time: 10}, {op: 2, time: 10}, {op: 3, time: 6}],
+                    [{op: 2, time: 6}, {op: 3, time: 8}, {op: 1, time: 9}, {op: 4, time: 10}],
+                    [{op: 2, time: 3}, {op: 4, time: 2}, {op: 1, time: 1}, {op: 3, time: 4}],
+                    [{op: 3, time: 4}, {op: 4, time: 3}, {op: 1, time: 2}, {op: 2, time: 1}]
+                 ],[
+                    [{op: 1, time: 1}, {op: 3, time: 3}, {op: 2, time: 4}, {op: 4, time: 4}],
+                    [{op: 2, time: 2}, {op: 1, time: 2}, {op: 3, time: 3}, {op: 4, time: 4}],
+                    [{op: 3, time: 1}, {op: 2, time: 2}, {op: 1, time: 4}, {op: 4, time: 3}],
+                    [{op: 3, time: 7}, {op: 2, time: 7}, {op: 1, time: 8}, {op: 4, time: 7}],
+                    [{op: 4, time: 3}, {op: 3, time: 2}, {op: 2, time: 2}, {op: 1, time: 3}],
+                    [{op: 3, time: 5}, {op: 2, time: 3}, {op: 1, time: 1}, {op: 4, time: 2}]
+                 ],[
+                    [{op: 1, time: 2}, {op: 3, time: 4}, {op: 4, time: 2}, {op: 2, time: 3}],
+                    [{op: 1, time: 10}, {op: 4, time: 10}, {op: 3, time: 15}, {op: 2, time: 8}],
+                    [{op: 4, time: 3}, {op: 3, time: 1}, {op: 1, time: 4}, {op: 2, time: 2}],
+                    [{op: 1, time: 2}, {op: 4, time: 3}, {op: 2, time: 2}, {op: 3, time: 3}],
+                    [{op: 1, time: 5}, {op: 3, time: 1}, {op: 2, time: 2}, {op: 4, time: 2}],
+                    [{op: 4, time: 2}, {op: 1, time: 3}, {op: 3, time: 2}, {op: 2, time: 3}]
+                ]
               ],
               // 机器安排
               operationArrange: []
           }
       },
       methods: {
+          // 设置初始值
+          init() {
+              let operationNum = 0
+              for(let i in this.operationDetail[0][0]) {
+                  operationNum ++
+              }
+              this.operationNum = operationNum
+
+              this.factoryNum = this.operationDetail.length
+
+              this.jobNum = this.operationDetail[0].length
+          },
           // 初始化染色体  F-J,
           initChromosome() {
 
               this.chromosomes = []
               for(let k = 0; k < this.chromosomeNum; k++) {
                   let chromosome = []
+                  let factoryChrome = []       // 排列：[1, 3, 2, 2, 3, 3]
                   for (let i = 0; i < this.operationNum; i++) {
                       for(let j = 0; j < this.jobNum; j++ ) {
                           chromosome[j + i * this.operationNum] = j + 1
                       }
                   }
-//                  let curTime, time
+                  for( let i = 0; i < this.jobNum; i++ ) {
+                      // 1, 2, 3
+                      factoryChrome.push(Math.ceil(this.factoryNum * Math.random()))
+                  }
                   this.randomChromosome(chromosome)
-                  this.chromosomes.push(chromosome)
+
+                  this.chromosomes.push({
+                    "jobChrome": chromosome,
+                    "factoryChrome": factoryChrome
+                  })
               }
           },
           // 产生下一代染色体
@@ -67,14 +118,18 @@
               let curChromosome = this.sortChromosome(this.chromosomes)
               let newChromosome = []
               for(let i = 0; i < curChromosome.length - 1; i ++) {
-                  let {chromosome1, chromosome2} = this.pointCross(curChromosome[i], curChromosome[i + 1])
+                  // 处理jobChrome，交叉
+                  let {chromosome1, chromosome2} = this.pointCross(curChromosome[i].jobChrome, curChromosome[i + 1].jobChrome)
                   // 变异
                   if (Math.random() < this.variationRate) {
-                      Math.random() > 0.5 ? this.ReverseOrderVariation(chromosome1) : this.exchangeVariation(chromosome1)
-                      Math.random() > 0.5 ? this.ReverseOrderVariation(chromosome2) : this.exchangeVariation(chromosome2)
+                      chromosome1 = (Math.random() > 0.5 ? this.ReverseOrderVariation(chromosome1) : this.exchangeVariation(chromosome1))
+                      chromosome2 = (Math.random() > 0.5 ? this.ReverseOrderVariation(chromosome2) : this.exchangeVariation(chromosome2))
                   }
-                  newChromosome.push(chromosome1)
-                  newChromosome.push(chromosome2)
+                  // 处理factoryChrome
+                  let { factoryChromosome1, factoryChromosome2 } = this.pointCrossFactoryChrome(curChromosome[i].factoryChrome, curChromosome[i + 1].factoryChrome)
+
+                  newChromosome.push({jobChrome: chromosome1, factoryChrome: factoryChromosome1})
+                  newChromosome.push({jobChrome: chromosome2, factoryChrome: factoryChromosome2})
                   newChromosome.push(curChromosome[i])
                   newChromosome.push(curChromosome[i + 1])
               }
@@ -110,7 +165,6 @@
               // 比较当前最好的 染色体，和这一代最好的染色体对比
               if (this.bestChromosome.length > 0) {
                   let time = this.computedTime(this.bestChromosome)
-//                  console.debug('time', time, 'minTime', minTime)
                   if (minTime < time) {
                       this.bestChromosome = this.chromosomes[index]
                   }
@@ -125,45 +179,56 @@
               let jobNum = new Array(this.jobNum).fill(-1)
               // 下一个job要开始的最早时间
               let jobStartTime = new Array(this.jobNum).fill(0)
-              chromosome.forEach((i) => {
+              chromosome.jobChrome.forEach((i) => {   // i为工作编号
+                  // 第几个操作
                   jobNum[i-1]++
-                  let op = this.operationDetail[i-1][jobNum[i-1]].op - 1
-                  let time = this.operationDetail[i-1][jobNum[i-1]].time
-                  if(operationArrange[op]) {
-                      if(operationArrange[op].length < jobStartTime[i-1]) {
-                          operationArrange[op] += '0'.repeat(jobStartTime[i-1] - operationArrange[op].length)
+                  // 第几个工厂
+                  let factory = chromosome.factoryChrome[i - 1]
+                  let op = this.operationDetail[factory - 1][i - 1][jobNum[i-1]].op - 1
+                  let time = this.operationDetail[factory - 1][i - 1][jobNum[i-1]].time
+                  if(operationArrange['fac' + factory + 'op' + op]) {
+                      if(operationArrange['fac' + factory + 'op' + op].length < jobStartTime[i-1]) {
+                          operationArrange['fac' + factory + 'op' + op] += '0'.repeat(jobStartTime[i-1] - operationArrange['fac' + factory + 'op' + op].length)
                       }
                   }
                   else {
                       if(0 < jobStartTime[i-1]) {
-                          operationArrange[op] = '0'.repeat(jobStartTime[i-1])
+                          operationArrange['fac' + factory + 'op' + op] = '0'.repeat(jobStartTime[i-1])
                       }
                   }
 
-                  operationArrange[op] ? operationArrange[op] += (i + '').repeat(time) : operationArrange[op] = (i + '').repeat(time)
-                  jobStartTime[i-1] = operationArrange[op].length
+                  operationArrange['fac' + factory + 'op' + op] ? operationArrange['fac' + factory + 'op' + op] += (i + '').repeat(time) : operationArrange['fac' + factory + 'op' + op] = (i + '').repeat(time)
+                  jobStartTime[i-1] = operationArrange['fac' + factory + 'op' + op].length
               })
-
               return operationArrange
           },
           // 计算总时间
           computedTime(chromosome) {
               let operationArrange = this.getDistribution(chromosome)
               let Time = []
-              operationArrange.forEach((i) => {
-                  Time.push(i.length)
-              })
+              for(let d in operationArrange) {
+                  Time.push(operationArrange[d].length)
+              }
               return Math.max.apply(null, Time)
           },
           // 画甘特图
           drawChart(chromosome) {
-
+              this.operationArrange = this.getDistribution(chromosome)
+          },
+          pointCrossFactoryChrome(chromosome1, chromosome2) {
+              let { station2 } = this.randomTwoStation()
+              let c1 = chromosome1.slice(0, station2),
+                  c2 = chromosome1.slice(station2, chromosome1.length),
+                  c3 = chromosome2.slice(0, station2),
+                  c4 = chromosome2.slice(station2, chromosome2.length)
+              return {
+                  factoryChromosome1: c1.concat(c4),
+                  factoryChromosome2: c3.concat(c2)
+              }
           },
           // 单点交叉
           pointCross(chromosome1, chromosome2) {
               let { station2 } = this.randomTwoStation()
-//              this.makeLegal()
-//              console.debug(chromosome1, chromosome2)
               let c1 = chromosome1.slice(0, station2),
                   c2 = chromosome1.slice(station2, chromosome1.length),
                   c3 = chromosome2.slice(0, station2),
@@ -191,7 +256,6 @@
                       i--
                   }
               }
-//              console.debug(c1, c2)
 
               // 处理不重复的部分
               for(let i = 0, len = c1.length; i < len; i+=2) {
@@ -240,7 +304,7 @@
           // 随机两个位置
           randomTwoStation() {
               // 随机确定两个位置
-              let station1, station2, len = this.operationNum * this.jobNum - 1
+              let station1, station2, len = (this.operationNum - 1) * this.jobNum
               do {
                   station1 = parseInt(len * Math.random())
                   station2 = parseInt(len * Math.random())
@@ -254,10 +318,12 @@
           }
       },
       created() {
+          this.init()
           // 初始化第一代染色体
           this.initChromosome()
           // 获取最好的染色体
           this.getBestChromosome()
+
           // 产生下一代染色体
           let bestTime, bestTimeNum = 0
           for (let i = 0; i < this.maxCycleNum; i++) {
@@ -273,6 +339,10 @@
           }
           console.debug(bestTime)
           this.operationArrange = this.getDistribution(this.bestChromosome)
+      },
+      mounted() {
+//        var bestChromosome = [2, 1, 3, 2, 1, 4, 1, 4, 5, 3, 4, 3, 2, 3, 1, 5, 2, 4, 6, 3, 6, 6, 2, 5, 6, 3, 1, 4, 2, 1, 5, 5, 4, 6, 5, 6]
+//        this.drawChart(bestChromosome)
       }
   }
 </script>
@@ -280,6 +350,36 @@
 <style lang="scss">
   #app {
     font-family: Consolas, Monaco, monospace;
+  }
+  .color {
+    display: inline-block;
+    width: 10px;
+    height: 20px;
+    background-color: #fff;
+  }
+  .color0 {
+    background-color: #000;
+  }
+  .color1 {
+    background-color: red;
+  }
+  .color2 {
+    background-color: yellow;
+  }
+  .color3 {
+    background-color: darkgray;
+  }
+  .color4 {
+    background-color: coral;
+  }
+  .color5 {
+    background-color: palevioletred;
+  }
+  .color5 {
+    background-color: palegreen;
+  }
+  .color6 {
+    background-color: orangered;
   }
 
 </style>
