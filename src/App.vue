@@ -1,31 +1,57 @@
 <template>
   <div id="app" ref="app">
-    <div class="setting">
-      <label for="">循环次数：</label>
-      <input type="text" v-model="maxCycleNum" class="form-control">
-      <label for="">每代染色体个数：</label>
-      <input type="text" class="form-control" v-model="chromosomeNum">
-      <label for="">变异概率</label>
-      <input type="text" class="form-control" v-model="variationRate">
-      <button class="btn" @click="runResult">运行</button>
+    <div class="form-horizontal">
+      <div class="form-group">
+        <label for="" class="control-label col-xs-2">循环次数：</label>
+        <div class="col-xs-3">
+          <input type="text" v-model="maxCycleNum" class="form-control">
+        </div>
+        <label class="control-label col-xs-2" for="">每代染色体个数：</label>
+        <div class="col-xs-3">
+          <input type="text" class="form-control" v-model="chromosomeNum">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="control-label col-xs-2" for="">变异概率：</label>
+        <div class="col-xs-3">
+          <input type="text" class="form-control" v-model="variationRate">
+        </div>
+      </div>
+      <div class="form-group text-center">
+          <button type="button" class="btn btn-info" @click="runResult">运行</button>
+          <button type="button" class="btn btn-info" @click="getWidth">重新绘制</button>
+          <button type="button" class="btn btn-info" @click="getResult">运行100次</button>
+          <!--<button type="button" class="btn btn-info" @click="getBestResultWithThreeTime">运行3次，取最优值</button>-->
+      </div>
     </div>
-
-    <div class="result">
-      <div v-for="(value, key) in operationArrange">
-        {{ key }}:
-      <span class="color-wrap" v-for="d in value">
-        <i :class="'color color' + d" :style="'width:' + width + 'px;'"></i>
-      </span>
+    <div class="panel panel-default"  >
+      <div class="panel-heading">
+        <div class="row">
+          <div class="col-xs-2">运行结果</div>
+          <div class="col-xs-3">最优时间：{{ bestTime }}</div>
+          <div class="col-xs-3">运行时间（单位：秒）：{{ runTime }}</div>
+        </div>
       </div>
+      <div class="panel-body">
+        <div class="result">
+          <div v-for="(value, key) in operationArrange">
+            {{ key }}:
+            <span class="color-wrap" v-for="d in value">
+              <i :class="'color color' + d" :style="'width:' + width + 'px;'"></i>
+            </span>
+          </div>
 
-      <div class="show-obj">
-        <span v-for="i in jobNum">job{{i}}：<i :class="'color color' + i"></i></span>
-      </div>
-
-      <div class="border-wrap">
-      <span class="border" :style="'width:' + width + 'px;'" v-for="i in bestTime">
-        <i class="time" v-if="i % Math.ceil(30 / width) === 0">{{ i }}</i>
-      </span>
+          <!-- 右边图示 -->
+          <div class="show-obj">
+            <span v-for="i in jobNum">job{{i}}：<i :class="'color color' + i"></i></span>
+          </div>
+          <!-- 底部边界 -->
+          <div class="border-wrap">
+            <span class="border" :style="'width:' + width + 'px;'" v-for="i in bestTime">
+              <i class="time" v-if="i % Math.ceil(30 / width) === 0">{{ i }}</i>
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -46,20 +72,22 @@
               // 工厂的个数
               factoryNum: null,
               // 当代染色的个数
-              chromosomeNum: 2,
+              chromosomeNum: 50,
               // 当代最好的染色体
               bestChromosome: [],
+              time: null,
               // 交叉概率
               crossRate: null,
               width: null,
               // 最大循环次数
-              maxCycleNum: 2,
+              maxCycleNum: 20,
+              curCycleNum: 0,
               // 变异概率
-              variationRate: 0.3,
+              variationRate: 1,
               // 最优时间
               bestTime: null,
               // [1][2]  job 1 opera 2
-              operationDetail1: [
+              operationDetail: [
                   [
                       [{op: 3, time: 1}, {time:3, op: 1}, {time: 6, op: 2}, {time: 7, op: 4}, {time: 3, op: 6}, {time: 6, op: 5}],
                       [{time: 8, op: 2},{time: 5, op: 3},{time: 10, op: 5}, {time: 10, op: 6}, {time: 10, op: 1}, {time: 4, op: 4}],
@@ -70,7 +98,7 @@
                   ]
               ],
               // 多工厂调度计划
-              operationDetail: [
+              operationDetail1: [
                  [
                     [{op: 1, time: 2}, {op: 3, time: 1}, {op: 2, time: 3}, {op: 4, time: 3}],
                     [{op: 2, time: 3}, {op: 3, time: 2}, {op: 1, time: 3}, {op: 4, time: 4}],
@@ -95,7 +123,8 @@
                 ]
               ],
               // 机器安排
-              operationArrange: {}
+              operationArrange: {},
+              runTime: null
           }
       },
       methods: {
@@ -113,6 +142,8 @@
           },
           // 设置参数重新运行
           runResult() {
+              let startDate = new Date();
+              this.init()
               // 初始化第一代染色体
               this.initChromosome()
               // 获取最好的染色体
@@ -120,7 +151,7 @@
 
               // 产生下一代染色体
               let bestTime, bestTimeNum = 0
-              for (let i = 0; i < this.maxCycleNum; i++) {
+              for (this.curCycleNum = 0; this.curCycleNum < this.maxCycleNum; this.curCycleNum++) {
                   this.ProduceNextGeneration()
                   let time = this.computedTime(this.bestChromosome)
                   if (bestTime === time) {
@@ -129,64 +160,80 @@
                       bestTime = time
                       bestTimeNum = 0
                   }
-                  console.debug(time)
+//                console.debug(time)
               }
-              console.debug(bestTime)
               this.bestTime = bestTime
               this.getWidth()
               this.drawChart(this.bestChromosome)
+              let endDate = new Date()
+              this.runTime = (endDate - startDate)/1000
           },
           getWidth() {
-            console.debug('clientWidth', this.$el.clientWidth)
-            this.width = parseInt((this.$el.clientWidth - 200)/this.bestTime)
+            this.width = parseInt((this.$el.clientWidth - 230)/this.bestTime)
           },
           // 初始化染色体  F-J,
           initChromosome() {
-
-              this.chromosomes = []
-              for(let k = 0; k < this.chromosomeNum; k++) {
+              let chromosomes = []
+              for(let k = 0; k < this.chromosomeNum * 5; k++) {
                   let chromosome = []
-                  let factoryChrome = []       // 排列：[1, 3, 2, 2, 3, 3]
+                  let factoryChrome = []
                   for (let i = 0; i < this.operationNum; i++) {
                       for(let j = 0; j < this.jobNum; j++ ) {
                           chromosome[j + i * this.jobNum] = j + 1
                       }
                   }
                   for( let i = 0; i < this.jobNum; i++ ) {
-                      // 1, 2, 3
                       factoryChrome.push(Math.ceil(this.factoryNum * Math.random()))
                   }
                   this.randomChromosome(chromosome)
 
-                  this.chromosomes.push({
+                  chromosomes.push({
                     "jobChrome": chromosome,
                     "factoryChrome": factoryChrome
                   })
               }
+              this.chromosomes = this.sortChromosome(chromosomes).slice(0, this.chromosomeNum)
           },
           // 产生下一代染色体
           ProduceNextGeneration() {
               let curChromosome = this.sortChromosome(this.chromosomes)
               let newChromosome = []
-              for(let i = 0; i < curChromosome.length - 1; i ++) {
+              for(let i = 0; i < curChromosome.length - 1; i += 2) {
                   // 处理jobChrome，交叉
                   let {chromosome1, chromosome2} = this.pointCross(curChromosome[i].jobChrome, curChromosome[i + 1].jobChrome)
-                  // 变异
-                  if (Math.random() < this.variationRate) {
-                      chromosome1 = (Math.random() > 0.5 ? this.ReverseOrderVariation(chromosome1) : this.exchangeVariation(chromosome1))
-                      chromosome2 = (Math.random() > 0.5 ? this.ReverseOrderVariation(chromosome2) : this.exchangeVariation(chromosome2))
-                  }
                   // 处理factoryChrome
                   let { factoryChromosome1, factoryChromosome2 } = this.pointCrossFactoryChrome(curChromosome[i].factoryChrome, curChromosome[i + 1].factoryChrome)
+                  // 变异
+                  if (Math.random() < this.variationRate) {
+                    chromosome1 = this.ReverseOrderVariation(chromosome1)
+                    chromosome2 = this.ReverseOrderVariation(chromosome2)
+                    factoryChromosome1 = this.ReverseOrderVariation(factoryChromosome1)
+                    factoryChromosome2 = this.ReverseOrderVariation(factoryChromosome2)
+                  }
 
                   newChromosome.push({jobChrome: chromosome1, factoryChrome: factoryChromosome1})
                   newChromosome.push({jobChrome: chromosome2, factoryChrome: factoryChromosome2})
                   newChromosome.push(curChromosome[i])
                   newChromosome.push(curChromosome[i + 1])
               }
+              // 删除重复的染色体
+              let result = this.judgeSameChromosomes(newChromosome)
               // 选取父代和子代中最好的
-              this.chromosomes = this.sortChromosome(newChromosome).slice(0, this.chromosomes.length)
+              this.chromosomes = result.slice(0, this.chromosomes.length)
               this.getBestChromosome()
+          },
+          // 判断两条染色体是否相同
+          judgeSameChromosomes(chromosome) {
+            let newChromosome = this.sortChromosome(chromosome)
+            let result = [newChromosome[0]]
+            for (let i = 0; i < newChromosome.length - 1; i++) {
+              let str1 = newChromosome[i].jobChrome.join() +  newChromosome[i].factoryChrome.join()
+              let str2 = newChromosome[i + 1].jobChrome.join() + newChromosome[i + 1].factoryChrome.join()
+              if (str1 != str2) {
+                result.push(newChromosome[i + 1])
+              }
+            }
+            return result
           },
           // 按时间大小进行排序
           sortChromosome(chromosomes) {
@@ -372,11 +419,45 @@
                   station2 = st
               }
               return { station1, station2 }
+          },
+          // 运行3次获取最优值
+          getBestResultWithThreeTime() {
+            let startDate = new Date();
+            let time = 1000, bestChromosome = null
+            for (let i = 0; i < 3; i ++) {
+              this.runResult()
+              if (this.bestTime < time) {
+                time = this.bestTime
+                bestChromosome = this.bestChromosome
+              }
+//              console.debug("第" + i + "次，结果：" + this.bestTime)
+            }
+            this.bestTime = time
+            this.drawChart(bestChromosome)
+            let endDate = new Date()
+            this.runTime = (endDate - startDate)/1000
+          },
+          // 运行100次，取最佳值的次数
+          getResult() {
+            let time = 0, time2 = 0, time3 = 0, time4 = 0
+            for (let i = 0; i < 1000; i ++) {
+              this.runResult()
+              if (this.bestTime === 11) {
+                time ++
+              } else if (this.bestTime === 12) {
+                time2 ++
+              } else if (this.bestTime === 13) {
+                time3 ++
+              } else if (this.bestTime === 14) {
+                time4 ++
+              }
+              console.debug("第" + i + "次，结果：" + this.bestTime)
+            }
+            console.debug("11 ", time, " 12 ",time2, " 13 ",time3, " 14 ", time4 )
           }
       },
-      mounted() {
-          this.init()
-          this.runResult()
+    mounted() {
+
       }
   }
 </script>
@@ -386,6 +467,7 @@
     font-family: Consolas, Monaco, monospace;
     position: relative;
     box-sizing: border-box;
+    padding: 20px;
   }
   .show-obj {
     position: absolute;
@@ -453,54 +535,12 @@
     }
 
   }
-  .setting {
-    padding: 20px;
-    .form-control {
-      display: inline-block;
-      height: 18px;
-      font-size: 14px;
-      margin-right: 10px;
-      line-height: 1.42857143;
-      color: #2a2a2a;
-      background-color: #fff;
-      background-image: none;
-      border: 1px solid #d2d2d2;
-      border-radius: 4px;
-      padding: 6px 10px;
-      width: 140px;
-      transition: border-color ease-in-out .15s,box-shadow ease-in-out .15s;
-      box-shadow: none;
-    }
-  }
   .result {
     position: relative;
+    padding: 20px 10px;
   }
-  .btn {
-    display: inline-block;
-    margin-bottom: 0;
-    font-weight: 400;
-    text-align: center;
-    vertical-align: middle;
-    -ms-touch-action: manipulation;
-    touch-action: manipulation;
-    cursor: pointer;
-    background-image: none;
-    border: 1px solid transparent;
-    white-space: nowrap;
-    padding: 6px 12px;
-    font-size: 14px;
-    line-height: 1.42857143;
-    border-radius: 4px;
-    color: #fff;
-    background-color: #06c1ae;
-    border-color: #06c1ae;
-    user-select: none;
-    &:active, &:focus {
-      border-color: #049081!important;
-      background-color: #049081!important;
-      -webkit-box-shadow: none;
-      outline: 0;
-    }
+  .some-result {
+    margin-top: 30px;
   }
 
 </style>
